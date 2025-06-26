@@ -60,6 +60,9 @@ lapply(crops, function(crop_choice) {
 
 data_files <- list.files(here(dir$dataprepared), pattern = "\\.rds$", recursive=TRUE, full.names=TRUE)
 
+# Keep data_files with crop names in it
+data_files <- data_files[grepl(paste(crops, collapse = "|"), data_files)]
+
 # Load communes sf
 communes_sf <- st_read(here(dir$sf, "communes-20220101.shp"))
 # Keep communes in metropolitan France + corsica
@@ -124,8 +127,21 @@ aggregate_gaez_commune <- function(data_file) {
 }
 
 # Apply the function to all files and combine results
-all_summaries <- map_dfr(data_files, aggregate_gaez_commune)
+all_summaries <- map_dfr(data_files, aggregate_gaez_commune) 
+all_summaries_df <- all_summaries %>% 
+  st_drop_geometry() %>% 
+  select(-geometry)
+  
+
+# Filter for only rcp8p5 and theme4
+all_summaries_df_filtered <- all_summaries_df %>%
+  filter(rcp %in% c("Hist", "rcp8p5"), 
+         theme_id == "4",
+         model %in% c("CRUTS", "HadGEM2-ES")) 
+  # Remove all geometries to have a df
 
 # Save results
-saveRDS(all_summaries, file = here(dir$dataprepared, "GAEZ_yieldchange_communes.rds"))
+saveRDS(all_summaries_df, file = here(dir$dataprepared, "GAEZ_yieldchange_communes.rds"))
+saveRDS(all_summaries_df_filtered, file = here(dir$dataprepared, "GAEZ_yieldchange_communes_filt.rds"))
+
 
