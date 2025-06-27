@@ -140,6 +140,7 @@ all_summaries_df_filtered <- all_summaries_df %>%
          model %in% c("CRUTS", "HadGEM2-ES")) 
   # Remove all geometries to have a df
 
+object.size(all_summaries_df_filtered)
 # Save results
 saveRDS(all_summaries_df, file = here(dir$dataprepared, "GAEZ_yieldchange_communes.rds"))
 saveRDS(all_summaries_df_filtered, file = here(dir$dataprepared, "GAEZ_yieldchange_communes_filt.rds"))
