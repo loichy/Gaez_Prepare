@@ -50,6 +50,7 @@ rsconnect/
 
 # Data
 data_prepared/*.rds
+data_final/*.rds
 
 # Output
 output/*.html

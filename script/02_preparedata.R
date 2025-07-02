@@ -24,6 +24,7 @@ dir$file_gaezdata <- file_gaezdata
 dir$data_th3 <- here(file_gaezdata, "Theme3")
 dir$data_th4 <- here(file_gaezdata, "Theme4")
 dir$dataprepared <- here(dir$root, "data_prepared")
+dir$datafinal <- here(dir$root, "data_final")
 dir$output <- here(dir$root, "output")
 dir$script <- here(dir$root, "script")
 dir$sf <- here(dir$file_gaezdata, "Shapefiles")
@@ -47,7 +48,8 @@ source(here(dir$script, "01_assembledata.R"))
 # Wheat          ~ Blé tendre
 # Flax           ~ Plantes à fibre
 # Dry Pea        ~ Protéagineux
-crops <- c("Chickpea", "Flax", "Gram", "Maize", "Dry pea", "Wheat")
+# crops_filter <- c("Chickpea", "Flax", "Gram", "Maize", "Dry pea", "Wheat")
+crops <- c(unique(crops_theme4$crop), "Grass")
 
 # Apply the function which assembles data to each crop
 lapply(crops, function(crop_choice) {
@@ -136,13 +138,13 @@ all_summaries_df <- all_summaries %>%
 # Filter for only rcp8p5 and theme4
 all_summaries_df_filtered <- all_summaries_df %>%
   filter(rcp %in% c("Hist", "rcp8p5"), 
-         theme_id == "4",
+         # theme_id == "4",
          model %in% c("CRUTS", "HadGEM2-ES")) 
   # Remove all geometries to have a df
 
 object.size(all_summaries_df_filtered)
 # Save results
-saveRDS(all_summaries_df, file = here(dir$dataprepared, "GAEZ_yieldchange_communes.rds"))
-saveRDS(all_summaries_df_filtered, file = here(dir$dataprepared, "GAEZ_yieldchange_communes_filt.rds"))
+saveRDS(all_summaries_df, file = here(dir$datafinal, "GAEZ_yieldchange_communes.rds"))
+saveRDS(all_summaries_df_filtered, file = here(dir$datafinal, "GAEZ_yieldchange_communes_filt.rds"))
 
 
