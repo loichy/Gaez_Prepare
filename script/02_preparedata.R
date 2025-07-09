@@ -56,14 +56,67 @@ lapply(crops, function(crop_choice) {
   process_crop_yield(crop_choice = crop_choice, folder = dir$dataprepared, crops_theme3 = crops_theme3, crops_theme4 = crops_theme4)
 })
 
+# For Gras (manually)s:
+
+yield_list_th3 <- list.files(dir$data_th3, pattern = "\\.tif$", recursive = TRUE, full.names = TRUE)
+
+# 2). Get crop codes (with checks)
+crop_code_grass <- crops_theme3 %>% filter(crop == "Grass") %>% pull(code)
+yield_grass_list_th3 <- yield_list_th3[grepl(crop_code_grass, yield_list_th3)]  
+  
+# 3). Define info extractor
+extract_info <- function(path) {
+  
+  path <- gsub("\\\\", "/", path)
+  parts <- unlist(strsplit(path, "/"))
+  idx <- which(grepl("Theme", parts))
+  model <- parts[idx + 1]
+  rcp   <- parts[idx + 2]
+  time  <- parts[idx + 3]
+  file  <- basename(path)
+  name_parts <- stringr::str_match(file, "^(.*)_(.*)\\.tif$")[-1]
+  crop <- "Grass"
+  variable <- name_parts[(!grepl(crop_code_grass, name_parts))]
+  return(paste(model, rcp, time, crop, variable, sep = "_"))
+}
+  
+# Prepare metropolitan France geometry
+france <- rnaturalearth::ne_countries(scale = "medium", country = "France", returnclass = "sf")
+metropolitan_bbox <- sf::st_bbox(c(xmin = -5, xmax = 10, ymin = 41, ymax = 52), crs = sf::st_crs(france))
+bbox_sf <- sf::st_as_sfc(metropolitan_bbox)
+metropolitan_france <- sf::st_intersection(france, bbox_sf)
+  
+# Prepare results containers
+yield_grass_final <- NULL
+ 
+raster_stack_grass <- terra::rast(yield_grass_list_th3)
+names(raster_stack_grass) <- sapply(yield_grass_list_th3, extract_info)
+metropolitan_france <- sf::st_transform(metropolitan_france, terra::crs(raster_stack_grass))
+raster_grass_france <- terra::crop(raster_stack_grass, terra::vect(metropolitan_france)) %>%
+  terra::mask(terra::vect(metropolitan_france))
+yield_grass_df <- as.data.frame(raster_grass_france, xy = TRUE, na.rm = TRUE)
+yield_grass_df_long <- yield_grass_df %>%
+  pivot_longer(cols = -c(x, y), names_to = "layer", values_to = "value") %>%
+  separate(layer, into = c("model", "rcp", "period", "crop", "variable"), sep = "_") %>%
+  mutate(theme_id = "3") %>%
+  arrange(variable, crop, model, rcp)
+yield_grass_df_final <- yield_grass_df_long %>%
+  select(x, y, theme_id, crop, variable, model, rcp, period, value)
+historical_grass <- yield_grass_df_final %>%
+  filter(rcp == "Hist") %>%
+  select(x, y, theme_id, crop, value) %>%
+  rename(value_hist = value)
+yield_grass_final <- yield_grass_df_final %>%
+  left_join(historical_grass, by = c("x", "y", "theme_id", "crop")) %>%
+  mutate(change = value / value_hist - 1)
+
+saveRDS(object = yield_grass_final, file = here::here(dir$dataprepared, paste0("GAEZ_yieldchange_", "Grass", ".rds")))
+
 #===============================================================================
 # 3). Aggregate yield and yield changes at the commune level ------
 #===============================================================================
 
 data_files <- list.files(here(dir$dataprepared), pattern = "\\.rds$", recursive=TRUE, full.names=TRUE)
-
-# Keep data_files with crop names in it
-data_files <- data_files[grepl(paste(crops, collapse = "|"), data_files)]
 
 # Load communes sf
 communes_sf <- st_read(here(dir$sf, "communes-20220101.shp"))
@@ -144,7 +197,7 @@ all_summaries_df_filtered <- all_summaries_df %>%
 
 object.size(all_summaries_df_filtered)
 # Save results
-saveRDS(all_summaries_df, file = here(dir$datafinal, "GAEZ_yieldchange_communes.rds"))
 saveRDS(all_summaries_df_filtered, file = here(dir$datafinal, "GAEZ_yieldchange_communes_filt.rds"))
+saveRDS(all_summaries_df, file = here(dir$datafinal, "GAEZ_yieldchange_communes.rds"))
 
 

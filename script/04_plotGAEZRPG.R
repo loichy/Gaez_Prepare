@@ -40,14 +40,17 @@ lapply(dir, function(i) dir.create(i, recursive = T, showWarnings = F))
 communes <- st_read(here(dir$sf, "communes-20220101.shp"), quiet = TRUE)
 
 # 2. Read Gaez data
-GAEZ_df <- readRDS(here(dir$dataprepared, "GAEZ_yieldchange_communes_filt.rds"))
+GAEZ_df <- readRDS(here(dir$datafinal, "GAEZ_yieldchange_communes_filt.rds"))
 
 GAEZ_df_filt <- GAEZ_df %>% 
   filter(theme_id == 4, variable == "ylHr", 
-         model == "HadGEM2-ES", 
-         rcp == "rcp8p5", 
-         crop %in% c("Oat", "Barley") ) %>% 
-  filter(change < 1)
+         model == "HadGEM2-ES",
+         rcp == "rcp8p5",
+         crop %in% c("Napier grass", "Alfalfa") )
+GAEZ_NapierGrass <- GAEZ_df %>% 
+  filter(crop == "Napier grass")
+GAEZ_df_filt <- GAEZ_df_filt %>% 
+  bind_rows(GAEZ_NapierGrass)
 
 GAEZ_sf <- GAEZ_df_filt %>%
   left_join(communes, by = c("insee")) %>% 
@@ -84,13 +87,13 @@ RPG_fl <- RPG_sf %>%
 #===============================================================================
 
 # Plot yield change
-GAEZ_wheat_map <- ggplot(GAEZ_wh) +
-  geom_sf(aes(fill = change), color = NA) +
-  scale_fill_gradient2(low = "blue", mid = "white", high = "orange", midpoint = 0) +
-  labs(fill = "Yield changes in percentage for wheat") +
+GAEZ_fodder_map <- ggplot(GAEZ_sf) +
+  geom_sf(aes(fill = value_hist), color = NA) +
+  facet_grid(~crop) +
+  labs(fill = "Historical potential yields") +
   theme_minimal()
 # Save the GAEZ map
-ggsave(here(dir$output, "GAEZ_yield_change_wheat_map.png"), plot = GAEZ_wheat_map, width = 10, height = 8)
+ggsave(here(dir$output, "GAEZ_yield_change_fodder_map.png"), plot = GAEZ_fodder_map, width = 10, height = 8)
 GAEZ_flax_map <- ggplot(GAEZ_fl) +
   geom_sf(aes(fill = change), color = NA) +
   scale_fill_gradient2(low = "blue", mid = "white", high = "orange", midpoint = 0) +
